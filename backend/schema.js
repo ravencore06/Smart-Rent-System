@@ -110,6 +110,38 @@ const bookingSchema = Joi.object({
   checkOut: Joi.date().greater(Joi.ref("checkIn")).required(),
   numGuests: Joi.number().min(1).required(),
   message: Joi.string().allow(""),
+  specialRequests: Joi.string().allow(""),
+  paymentInfo: Joi.object({
+    method: Joi.string().valid('credit_card', 'debit_card', 'paypal', 'stripe', 'razorpay'),
+    last4Digits: Joi.string(),
+    transactionId: Joi.string()
+  }),
+  priceBreakdown: Joi.object({
+    nightlyRate: Joi.number(),
+    numberOfNights: Joi.number(),
+    roomSubtotal: Joi.number(),
+    cleaningFee: Joi.number(),
+    serviceFee: Joi.number(),
+    subtotalBeforeTax: Joi.number(),
+    taxes: Joi.number(),
+    subtotalAfterTax: Joi.number(),
+    discountCode: Joi.string().allow(null),
+    discountAmount: Joi.number(),
+    totalPrice: Joi.number()
+  })
+});
+
+// Discount Code validation schema
+const discountCodeSchema = Joi.object({
+  code: Joi.string().min(3).max(20).required(),
+  description: Joi.string().max(500).allow(""),
+  type: Joi.string().valid('percentage', 'fixed').required(),
+  value: Joi.number().min(0).required(),
+  maxUses: Joi.number().allow(null),
+  minBookingAmount: Joi.number().default(0),
+  validFrom: Joi.date().required(),
+  validUntil: Joi.date().required(),
+  isActive: Joi.boolean().default(true)
 });
 
 // Review validation schema
@@ -140,6 +172,7 @@ module.exports = {
   resetPasswordSchema,
   propertySchema,
   bookingSchema,
+  discountCodeSchema,
   reviewSchema,
   messageSchema,
 };

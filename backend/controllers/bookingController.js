@@ -1,7 +1,9 @@
 const Booking = require('../models/booking');
 const Property = require('../models/property');
 const User = require('../models/user');
+const DiscountCode = require('../models/discountCode');
 const { bookingSchema } = require('../schema');
+const { calculateBookingPrice } = require('../utils/priceCalculator');
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
@@ -35,11 +37,35 @@ const createBooking = async (req, res) => {
     const checkOutDate = new Date(checkOut);
     
     // Calculate number of nights
-    const oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
+    const oneDay = 24 * 60 * 60 * 1000;
     const numNights = Math.round(Math.abs((checkOutDate - checkInDate) / oneDay));
     
-    // Calculate total price
-    const totalPrice = property.price * numNights;
+    if (numNights <= 0) {
+      return res.status(400).json({ message: 'Invalid booking dates' });
+    }
+
+    // Calculate price using price calculator
+    let priceInfo = req.body.priceBreakdown;
+    
+    if (!priceInfo) {
+      priceInfo = calculateBookingPrice({
+        nightlyRate: property.price,
+        numberOfNights: numNights
+      });
+    }
+
+    // Validate discount code if provided
+    if (priceInfo.discountCode) {
+      const discountCodeDoc = await DiscountCode.findOne({ 
+        code: priceInfo.discountCode 
+      });
+      
+      if (discountCodeDoc) {
+        if (discountCodeDoc.canBeApplied(priceInfo.subtotalAfterTax, req.user._id, propertyId)) {
+          await discountCodeDoc.incrementUsage();
+        }
+      }
+    }
     
     // Create booking
     const booking = new Booking({
@@ -49,8 +75,12 @@ const createBooking = async (req, res) => {
       checkOut: checkOutDate,
       numNights,
       numGuests,
-      totalPrice,
-      message
+      totalPrice: priceInfo.totalPrice,
+      message,
+      specialRequests: req.body.specialRequests,
+      paymentInfo: req.body.paymentInfo,
+      priceBreakdown: priceInfo,
+      status: 'pending'
     });
     
     // Save booking

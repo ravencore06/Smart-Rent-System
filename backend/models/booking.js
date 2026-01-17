@@ -41,8 +41,25 @@ const bookingSchema = new mongoose.Schema(
     paymentInfo: {
       id: String,
       status: String,
-      method: String,
-      tax: Number
+      method: {
+        type: String,
+        enum: ['credit_card', 'debit_card', 'paypal', 'stripe', 'razorpay'],
+        default: 'credit_card'
+      },
+      tax: Number,
+      transactionId: String,
+      last4Digits: String
+    },
+    priceBreakdown: {
+      nightlyRate: Number,
+      roomSubtotal: Number,
+      cleaningFee: Number,
+      serviceFee: Number,
+      subtotalBeforeTax: Number,
+      taxes: Number,
+      subtotalAfterTax: Number,
+      discountCode: String,
+      discountAmount: Number
     },
     status: {
       type: String,
@@ -64,9 +81,26 @@ const bookingSchema = new mongoose.Schema(
       enum: ['guest', 'host', 'admin', null],
       default: null
     },
+    cancellationReason: {
+      type: String
+    },
     refundAmount: {
       type: Number,
       default: 0
+    },
+    refundStatus: {
+      type: String,
+      enum: ['pending', 'processed', 'failed'],
+      default: 'pending'
+    },
+    refundDate: {
+      type: Date
+    },
+    specialRequests: {
+      type: String
+    },
+    hostApprovalDate: {
+      type: Date
     }
   },
   {
